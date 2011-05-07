@@ -45,20 +45,22 @@ object Post {
   }
 
   object Envelop {
-    val empty = Envelop(None, None, None, None)
+    val empty = Envelop(None, None, None, None, None)
   }
-  case class Envelop(from: Option[String], to: Option[Seq[String]], subject: Option[String], body: Option[Body]) {
+  case class Envelop(from: Option[String], to: Option[Seq[String]],
+                     subject: Option[String], body: Option[Body], headers: Option[Seq[(String,String)]]) {
     def targets = Map("from" -> from, "to" -> to)
   }
 
   object Pack {
     def apply(x: (Envelop, Session)): Either[String, Message] = x match {
       case (e, s) => e match {
-        case Envelop(Some(from), Some(to), sub, body) =>
+        case Envelop(Some(from), Some(to), sub, body, headers) =>
           val msg = new MimeMessage(s)
           msg.setFrom(new InternetAddress(from))
           msg.setRecipients(Message.RecipientType.TO, to.map(new InternetAddress(_).asInstanceOf[javax.mail.Address]).toArray)
           sub.map(msg.setSubject(_))
+          headers.map(_.foreach(_ match { case (k,v) => msg.setHeader(k, v) }))
           body match {
             case Some(b) => b(msg)
             case _ => Body.empty(msg)
@@ -72,23 +74,27 @@ object Post {
   }
 
   def to(addrs: Seq[String]) = (_:Envelop) match {
-    case Envelop(from, _, sub, body) => Envelop(from, Some(addrs), sub, body)
+    case Envelop(from, _, sub, body, headers) => Envelop(from, Some(addrs), sub, body, headers)
   }
 
   def to(addr: String) = (_:Envelop) match {
-    case Envelop(from, _, sub, body) => Envelop(from, Some(Seq(addr)), sub, body)
+    case Envelop(from, _, sub, body, headers) => Envelop(from, Some(Seq(addr)), sub, body, headers)
   }
 
   def from(addr: String) = (_:Envelop) match {
-    case Envelop(_, to, sub, body) => Envelop(Some(addr), to, sub, body)
+    case Envelop(_, to, sub, body, headers) => Envelop(Some(addr), to, sub, body, headers)
   }
 
   def subject(sub: String) = (_:Envelop) match {
-    case Envelop(from, to, _, body) => Envelop(from, to, Some(sub), body)
+    case Envelop(from, to, _, body, headers) => Envelop(from, to, Some(sub), body, headers)
   }
 
   def body(body: Body) = (_:Envelop) match {
-    case Envelop(from, to, sub, _) => Envelop(from, to, sub, Some(body))
+    case Envelop(from, to, sub, _, headers) => Envelop(from, to, sub, Some(body), headers)
+  }
+
+  def headers(headers: (String, String)*) = (_:Envelop) match {
+    case Envelop(from, to, sub, body, _) => Envelop(from, to, sub, body, Some(headers))
   }
 
   /** adds implicit convertion for `viaSmtps `*/
