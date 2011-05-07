@@ -1,6 +1,6 @@
 # telegram
 
-![teletype](http://en.wikipedia.org/wiki/File:WACsOperateTeletype.jpg)
+![teletype](http://upload.wikimedia.org/wikipedia/commons/8/89/WACsOperateTeletype.jpg)
 The missing mailer for scala
 
 ## usage
