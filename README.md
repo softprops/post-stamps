@@ -12,7 +12,7 @@ The missing mailer for scala
     Post(from("doug@domain.com")
       | to("doug@domain2.com")
       | subject("hi")
-      | body("well hello there)
+      | body("well hello there")
       ) viaSmtps(host, user, pass)
 
 ## todo
