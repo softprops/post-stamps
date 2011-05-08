@@ -22,7 +22,7 @@ object Post {
     finally { t.close }
   }
 
-  def session(props: Seq[(String, String)]) =
+  def session(props: (String, String)*) =
     Session.getInstance((new Properties() /: props)(
       (a,e) => { a.put(e._1, e._2); a }
     ))
@@ -97,17 +97,25 @@ object Post {
     case Envelop(from, to, sub, body, _) => Envelop(from, to, sub, body, Some(headers))
   }
 
-  /** adds implicit convertion for `viaSmtps `*/
+  /** adds implicit convertion for `viaSmtps` */
   implicit def e2t(e: Either[String, Message]) = new {
-    def viaSmtps(host: String, user: String, pass: String)(implicit s: Session) = {
+    def viaSmtps(host: String, user: String, pass: String)(implicit s: Session) =
       e.fold({ err =>
         println(err)
       }, { msg =>
-        smtps(host, user, pass) { transport =>
-          println("sending msg %s" format msg)
-          transport.sendMessage(msg, msg.getAllRecipients)
-        }
+        smtps(host, user, pass) { _.sendMessage(msg, msg.getAllRecipients) }
       })
+
+    /** adds implicit convertion for `viaSmtps`. actor usage may be questionable :/ */
+    def viaSmtps_!(host: String, user: String, pass: String)(implicit s: Session) = {
+      import scala.actors.Actor._
+      e.fold({ err =>
+        println(err)
+      }, { msg =>
+        (actor { loop { react {
+          case m => smtps(host, user, pass) { _.sendMessage(msg, msg.getAllRecipients) }
+        } } }) ! msg
+     })
     }
   }
 
